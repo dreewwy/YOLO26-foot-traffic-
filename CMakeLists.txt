@@ -1,18 +1,15 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(people_counter)
 
+# Use C++ 17 standard
 set(CMAKE_CXX_STANDARD 17)
 
-# OpenCV
-set(OpenCV_DIR "C:/opencv/build")
+# Find OpenCV and OpenVINO
 find_package(OpenCV REQUIRED)
+find_package(OpenVINO REQUIRED)
 
-# OpenVINO
-find_package(OpenVINO REQUIRED COMPONENTS Runtime)
-
+# Compile the executable (make sure to include your tracker source file!)
 add_executable(people_counter main.cpp tracker.cpp)
 
-target_link_libraries(people_counter
-    ${OpenCV_LIBS}
-    openvino::runtime
-)
+# Link the libraries
+target_link_libraries(people_counter PRIVATE ${OpenCV_LIBS} openvino::runtime)
