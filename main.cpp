@@ -219,7 +219,7 @@ void logTraffic(const string& event_type, int in_count, int out_count) {
              << ", \"out\": " << out_count << "}\n";
 }
 // Load rtsp from .env
-void loadEnv(const string& path = "../.env"){
+void loadEnv(const string& path = ".env"){
   ifstream file(path);
   string line;
   while (getline(file, line)) {
