@@ -1,14 +1,15 @@
 #!/bin/bash
+# Exit immediately if any command fails
 set -e 
 
 echo "=========================================="
 echo " Starting Tracker Node Deployment..."
 echo "=========================================="
 
-# 1. System Dependencies
+# 1. System Dependencies (Added python3-venv)
 echo "[1/4] Installing System Dependencies (OpenCV, CMake, Compilers)..."
 sudo apt update
-sudo apt install -y build-essential cmake git libopencv-dev python3-pip cron wget
+sudo apt install -y build-essential cmake git libopencv-dev python3-pip python3-venv cron wget
 
 # 2. OpenVINO Installation
 echo "[2/4] Installing OpenVINO 2024.1..."
@@ -30,9 +31,14 @@ fi
 # Source it right now for the build step
 source ~/openvino_toolkit/setupvars.sh
 
-# 3. Python Telemetry Dependencies
-echo "[3/4] Installing Python Telemetry Libraries..."
-pip3 install msal requests
+# 3. Python Telemetry Dependencies (USING VIRTUAL ENVIRONMENT)
+echo "[3/4] Setting up Python Virtual Environment..."
+# Create a virtual environment named '.venv' in the current directory
+python3 -m venv .venv
+# Activate it, install the packages, then deactivate it
+source .venv/bin/activate
+pip install msal requests
+deactivate
 
 # 4. Build the C++ Tracker
 echo "[4/4] Building the C++ Tracker..."
