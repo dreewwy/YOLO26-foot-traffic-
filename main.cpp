@@ -1,6 +1,9 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 #include <openvino/openvino.hpp>
+#include <fstream>
+#include <cstdlib>
+#include <algorithm>
 #include "tracker.h"
 #include <iostream>
 #include <vector>
@@ -24,9 +27,6 @@ const float  INPUT_WIDTH      = 640.0f;
 const float  INPUT_HEIGHT     = 640.0f;
 const float  CONF_THRESHOLD   = 0.10f;
 const int    DETECT_EVERY_N   = 4;
-const string RTSP_URL         = "rtsp://syno:e01c7681a9ab7546bcf67983f867c33b@10.10.10.129:554/Sms=5.unicast";
-const string MODEL_XML        = "yolo26s_openvino_model/yolo26s.xml";
-const string MODEL_BIN        = "yolo26s_openvino_model/yolo26s.bin";
 const string MODEL_ONNX       = "yolo26s.onnx";
 
 // Display resolution — 16:9, kept separate from inference size
@@ -60,9 +60,11 @@ public:
     atomic<bool> has_frame{false};
 
     RTSPCapture(const string& url) {
-        cap.open(0);  // 0 = first webcam, try 1 or 2 if wrong camera
-        cap.set(CAP_PROP_FRAME_WIDTH, 1280);
-        cap.set(CAP_PROP_FRAME_HEIGHT, 720);
+        cap.open(url, CAP_FFMPEG, {
+            CAP_PROP_OPEN_TIMEOUT_MSEC, 5000,
+            CAP_PROP_READ_TIMEOUT_MSEC, 5000,
+        });
+        cap.set(CAP_PROP_BUFFERSIZE, 1);
         cap.set(CAP_PROP_FPS, 30);
 
         if (!cap.isOpened()) {
@@ -216,14 +218,33 @@ void logTraffic(const string& event_type, int in_count, int out_count) {
              << "\", \"in\": " << in_count 
              << ", \"out\": " << out_count << "}\n";
 }
+// Load rtsp from .env
+void loadEnv(const string& path = "../.env"){
+  ifstream file(path);
+  string line;
+  while (getline(file, line)) {
+    line.erase(remove(line.begin(), line.end(), '\r'), line.end());
+    
+    if (line.empty() || line[0] == '#') continue;
+    
+    auto pos = line.find("=");
+    if (pos != string::npos) {
+      string key = line.substr(0,pos);
+      string value = line.substr(pos + 1);
+      setenv(key.c_str(), value.c_str(), 1);
+    }
+  }
+}
+
 // ─────────────────────────────────────────
 //  Main
 // ─────────────────────────────────────────
 int main()
 {
     try {
+    
         // FIX: ensure WSLg display is set before any OpenCV window call
-        
+        loadEnv();
         cv::setNumThreads(4);
 
         // ── Load model ────────────────────────
@@ -260,6 +281,12 @@ int main()
 
         // ── Connect to camera ─────────────────
         cout << "Connecting to RTSP stream..." << endl;
+        const char* rtsp_env = getenv("RTSP_STREAM");
+        string RTSP_URL = rtsp_env ? rtsp_env : "";
+        if (RTSP_URL.empty()){
+          cerr << "[FATAL ERROR] RTSP_URL not found in .env file" << endl;
+          return -1;
+        }
         RTSPCapture camera(RTSP_URL);
         if (!camera.running) return -1;
 
