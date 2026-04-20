@@ -6,7 +6,7 @@ from datetime import datetime
 import shutil
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path='../.env')
+load_dotenv(dotenv_path='.env')
 
 CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
