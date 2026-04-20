@@ -1,53 +1,72 @@
+import json
 import msal
 import requests
 import os
 from datetime import datetime
 import shutil
+from dotenv import load_dotenv
 
-# --- Configuration ---
-CLIENT_ID = 'your-client-id'
-CLIENT_SECRET = 'your-client-secret'
-TENANT_ID = 'your-tenant-id'
-SITE_ID = 'your-sharepoint-site-id' # Format: tenant.sharepoint.com,site-id,web-id
-DRIVE_ID = 'your-document-library-drive-id'
+load_dotenv(dotenv_path='../.env')
+
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+TENANT_ID = os.getenv('TENANT_ID')
+SITE_ID = os.getenv('SITE_ID')
+LIST_ID = os.getenv('LIST_ID')
 
 LOG_FILE = 'traffic_log.jsonl'
 AUTHORITY = f'https://login.microsoftonline.com/{TENANT_ID}'
 SCOPES = ['https://graph.microsoft.com/.default']
 
 def get_access_token():
-    app = msal.ConfidentialClientApplication(
-        CLIENT_ID, authority=AUTHORITY, client_credential=CLIENT_SECRET
-    )
+    app = msal.ConfidentialClientApplication(CLIENT_ID, authority=AUTHORITY, client_credential=CLIENT_SECRET)
     result = app.acquire_token_silent(SCOPES, account=None)
     if not result:
         result = app.acquire_token_for_client(scopes=SCOPES)
-    
     if "access_token" in result:
         return result["access_token"]
-    else:
-        raise Exception(f"Failed to acquire token: {result.get('error_description')}")
+    raise Exception(f"Failed to acquire token: {result.get('error_description')}")
 
-def upload_to_sharepoint(token, file_path):
-    # Rename file with timestamp to prevent overwriting in SharePoint
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    upload_name = f"traffic_log_{timestamp}.jsonl"
+def process_daily_totals(file_path):
+    total_in, total_out, peak_occupancy = 0, 0, 0
     
+    with open(file_path, 'r') as f:
+        for line in f:
+            if not line.strip(): continue
+            data = json.loads(line)
+            
+            # C++ arrays are cumulative, so the highest number is the daily total
+            total_in = max(total_in, data.get('in', 0))
+            total_out = max(total_out, data.get('out', 0))
+            
+            # Calculate how many people were inside at this exact moment
+            current_occupancy = data.get('in', 0) - data.get('out', 0)
+            peak_occupancy = max(peak_occupancy, current_occupancy)
+            
+    return total_in, total_out, peak_occupancy
+
+def push_to_sharepoint_list(token, total_in, total_out, peak_occupancy):
+    endpoint = f"https://graph.microsoft.com/v1.0/sites/{SITE_ID}/lists/{LIST_ID}/items"
     headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
     }
     
-    # Graph API Endpoint for uploading small files (< 4MB) to a Drive
-    endpoint = f"https://graph.microsoft.com/v1.0/sites/{SITE_ID}/drives/{DRIVE_ID}/root:/{upload_name}:/content"
-
-    with open(file_path, 'rb') as f:
-        file_data = f.read()
-        
-    response = requests.put(endpoint, headers=headers, data=file_data)
+    # Format today's date for the Title column
+    today_str = datetime.now().strftime("%Y-%m-%d")
     
+    payload = {
+        "fields": {
+            "Title": today_str,
+            "TotalIn": total_in,
+            "TotalOut": total_out,
+            "PeakOccupancy": peak_occupancy
+        }
+    }
+    
+    response = requests.post(endpoint, headers=headers, json=payload)
     if response.status_code in [200, 201]:
-        print(f"Successfully uploaded {upload_name} to SharePoint.")
+        print(f"Successfully pushed summary to SharePoint: {today_str} | In: {total_in} | Peak: {peak_occupancy}")
         return True
     else:
         print(f"Upload failed: {response.text}")
@@ -60,13 +79,14 @@ def main():
 
     try:
         token = get_access_token()
-        success = upload_to_sharepoint(token, LOG_FILE)
+        total_in, total_out, peak_occupancy = process_daily_totals(LOG_FILE)
+        
+        success = push_to_sharepoint_list(token, total_in, total_out, peak_occupancy)
         
         if success:
-            # Archive the local file so we start fresh for the next batch
             archive_name = f"archive_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
             shutil.move(LOG_FILE, archive_name)
-            print("Local log archived.")
+            print("Local log archived. Ready for tomorrow.")
             
     except Exception as e:
         print(f"Error: {e}")
