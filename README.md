@@ -27,7 +27,7 @@ YOLO26-foot-traffic-/
 ├── traffic_log.jsonl     # Active daily foot traffic data
 ├── upload.py             # Python script for SharePoint integration
 └── yolo26s.onnx          # OpenVINO optimized YOLO weights
-
+```
 **## Prerequisites**
 C++ Environment: g++, cmake, make
 Computer Vision: OpenCV 4.x, Intel OpenVINO Toolkit
