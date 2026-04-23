@@ -29,9 +29,9 @@ YOLO26-foot-traffic-/
 └── yolo26s.onnx          # OpenVINO optimized YOLO weights
 ```
 **## Prerequisites**
-C++ Environment: g++, cmake, make
-Computer Vision: OpenCV 4.x, Intel OpenVINO Toolkit
-Python Environment: Python 3, python3-venv
+1. **C++ Environment:** g++, cmake, make
+2. **Computer Vision:** OpenCV 4.x, Intel OpenVINO Toolkit
+3. **Python Environment:** Python 3, python3-venv
 
 These are all installed by running **bash setup.sh**
 setup.sh runs cmake and make but once prereqs are installed changes can be compiled by running:
