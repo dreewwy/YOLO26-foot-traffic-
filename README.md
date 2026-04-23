@@ -28,12 +28,14 @@ YOLO26-foot-traffic-/
 ├── upload.py             # Python script for SharePoint integration
 └── yolo26s.onnx          # OpenVINO optimized YOLO weights
 ```
-**## Prerequisites**
+## Prerequisites
 1. **C++ Environment:** g++, cmake, make
 2. **Computer Vision:** OpenCV 4.x, Intel OpenVINO Toolkit
 3. **Python Environment:** Python 3, python3-venv
 
-These are all installed by running **bash setup.sh**
+These are all installed by running ```bash setup.sh```
+
+## Compiling
 setup.sh runs cmake and make but once prereqs are installed changes can be compiled by running:
 ```
 mkdir -p build
@@ -41,7 +43,7 @@ cd build
 cmake ..
 make -j$(nproc)
 ```
-
+## .env Variables
 The program needs both an RTSP feed and MSAL configurations, these are added in a .env file with the following names:
 ```
 RTSP_STREAM=Your_Stream_RTSP
@@ -53,14 +55,14 @@ LIST_ID=Your_Sharepoint_list_ID
 ```
 **The Microsoft values can be found by creating an App within Entra or Azure Admin centre**
 
+## Headless and video display modes for configuration
 Within Main.cpp you can toggle Headless mode, by turning headless mode off you are able to see the RTSP stream on your linux device and see the In and Out boxes. 
 Configure your boxes to desired location by updated the area1 and area2 vectors inside Main.cpp. Once done, headless mode can be turn on. If you are running completely headless on a server you can either install a lightdm/xvfcb virtual display adapter or configure the headless PC to capture a screenshot of the RTSP render.
 
-
-**Running the Code**
+## Running the Code 
 Due to the location of the .env file, it is recommends to run the program with ./build/people_counter, in the base directory. _you will need to update the main.cpp dotenv config to run within the build directory_
 
-**Automation of Python**
+## Automation of Python 
 The Python Upload script should be configured to upload on a set schedule using a **Cron Job** It will process the data in the json and upload to sharepoint, archiving the old data.
 
 To configure open the crontab with:
